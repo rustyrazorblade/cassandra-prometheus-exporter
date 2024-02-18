@@ -5,6 +5,7 @@ import io.prometheus.client.dropwizard.DropwizardExports;
 import io.prometheus.client.exporter.MetricsServlet;
 import io.prometheus.client.hotspot.DefaultExports;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.GzipHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.apache.cassandra.metrics.CassandraMetricsRegistry;
@@ -20,7 +21,7 @@ public class CassandraPrometheusExporter {
         Thread thread = new Thread(() -> {
             do {
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(5000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -29,15 +30,20 @@ public class CassandraPrometheusExporter {
 
             System.out.println("Metrics are ready, starting server");
 
-            CollectorRegistry.defaultRegistry.register(new DropwizardExports(CassandraMetricsRegistry.Metrics));
+            CollectorRegistry.defaultRegistry.register(new FilteredDropwizardExports(CassandraMetricsRegistry.Metrics));
             // Expose Prometheus metrics.
             Server server = new Server(1234);
             ServletContextHandler context = new ServletContextHandler();
             context.setContextPath("/");
+
+//            GzipHandler gzipHandler = new GzipHandler();
+//            gzipHandler.setMimeTypes("text/plain") ;
+//            gzipHandler.setHandler(context);
+
             server.setHandler(context);
             context.addServlet(new ServletHolder(new MetricsServlet()), "/metrics");
+
             // Add metrics about CPU, JVM memory etc.
-            //DefaultExports.initialize();
             // Start the webserver.
             try {
                 server.start();
